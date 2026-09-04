@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "providers": {
+    "dual-gpu-image": {
+      "label": "Dual-GPU Local Image API",
+      "kind": "image",
+      "protocol": "mpt_image_v1",
+      "enabled": true,
+      "base_url": "http://host.docker.internal:8000",
+      "base_url_env": "MPT_DUAL_GPU_IMAGE_URL",
+      "auth": {
+        "type": "bearer_env",
+        "env": "API_TOKEN",
+        "optional": true
+      },
+      "actions": {
+        "health": {
+          "method": "GET",
+          "path": "/health",
+          "timeout_s": 30
+        },
+        "generate_image": {
+          "method": "POST",
+          "path": "/v1/images",
+          "timeout_s": 1800
+        }
+      },
+      "defaults": {
+        "save_dir": "moneyprinterturbo",
+        "width": 1024,
+        "height": 1024,
+        "min_size": 512,
+        "max_size": 1536,
+        "size_multiple": 16,
+        "files_path": "/files/",
+        "download_timeout_s": 300,
+        "negative_prompt": "text, watermark, duplicate subject, malformed anatomy, cropped subject"
+      }
+    },
+    "ollama": {
+      "label": "Ollama",
+      "kind": "llm",
+      "protocol": "ollama",
+      "enabled": true,
+      "base_url": "http://host.docker.internal:11434",
+      "base_url_env": "MPT_OLLAMA_URL",
+      "auth": {"type": "none", "optional": true},
+      "actions": {
+        "health": {"method": "GET", "path": "/api/tags", "timeout_s": 30},
+        "chat": {"method": "POST", "path": "/api/chat", "timeout_s": 600}
+      },
+      "defaults": {}
+    },
+    "openai-local": {
+      "label": "OpenAI-compatible Local LLM",
+      "kind": "llm",
+      "protocol": "openai_chat",
+      "enabled": false,
+      "base_url": "http://host.docker.internal:8081/v1",
+      "base_url_env": "MPT_OPENAI_COMPAT_URL",
+      "auth": {
+        "type": "bearer_env",
+        "env": "MPT_OPENAI_COMPAT_TOKEN",
+        "optional": true
+      },
+      "actions": {
+        "health": {"method": "GET", "path": "/models", "timeout_s": 30},
+        "chat": {"method": "POST", "path": "/chat/completions", "timeout_s": 600}
+      },
+      "defaults": {}
+    },
+    "tts-local": {
+      "label": "Generic Local TTS API",
+      "kind": "tts",
+      "protocol": "json_http",
+      "enabled": false,
+      "base_url": "http://host.docker.internal:8020",
+      "base_url_env": "MPT_TTS_PROVIDER_URL",
+      "auth": {
+        "type": "bearer_env",
+        "env": "MPT_TTS_PROVIDER_TOKEN",
+        "optional": true
+      },
+      "actions": {
+        "health": {"method": "GET", "path": "/health", "timeout_s": 30},
+        "synthesize": {"method": "POST", "path": "/v1/audio/speech", "timeout_s": 900}
+      },
+      "defaults": {}
+    },
+    "video-local": {
+      "label": "Generic Local Video API",
+      "kind": "video",
+      "protocol": "json_http",
+      "enabled": false,
+      "base_url": "http://host.docker.internal:8030",
+      "base_url_env": "MPT_VIDEO_PROVIDER_URL",
+      "auth": {
+        "type": "bearer_env",
+        "env": "MPT_VIDEO_PROVIDER_TOKEN",
+        "optional": true
+      },
+      "actions": {
+        "health": {"method": "GET", "path": "/health", "timeout_s": 30},
+        "generate_video": {"method": "POST", "path": "/v1/videos", "timeout_s": 3600}
+      },
+      "defaults": {}
+    }
+  }
+}
