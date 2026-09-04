@@ -1,0 +1,35 @@
+# Optional runtime provider containers.
+#
+# Providers running directly on the host are reached through
+# host.docker.internal from docker-compose.yml. This override starts only
+# providers MoneyPrinterTurbo is explicitly allowed to own.
+#
+# API only:
+#   docker compose -f docker-compose.yml -f docker-compose.providers.yml up -d api
+#
+# API + Ollama:
+#   docker compose -f docker-compose.yml -f docker-compose.providers.yml \
+#     --profile provider-ollama up -d api ollama
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: moneyprinterturbo-provider-ollama
+    profiles: ["provider-ollama"]
+    ports:
+      - "127.0.0.1:11434:11434"
+    environment:
+      NVIDIA_VISIBLE_DEVICES: ${OLLAMA_VISIBLE_DEVICES:-all}
+    volumes:
+      - mpt-ollama:/root/.ollama
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  mpt-ollama:
