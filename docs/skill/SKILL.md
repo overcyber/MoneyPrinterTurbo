@@ -1,148 +1,282 @@
 ---
 name: moneyprinterturbo-video
-description: Use this skill whenever the user wants to create a finished video from a topic, title, idea, prompt, or script with MoneyPrinterTurbo. This includes short-form, voice-over, educational, marketing, social-media, and stock-footage videos. Also use it when the user mentions MoneyPrinterTurbo, provides this Skill URL, asks an AI agent to install or configure MoneyPrinterTurbo, needs missing API keys identified, wants a failed generation repaired, or wants a generated MP4 located and delivered. Use this skill when the expected outcome is a final video file, not setup instructions.
-compatibility: Requires an AI agent with terminal, network, filesystem, and long-running command support. Supports macOS and Windows and uses uv exclusively.
+description: Create a finished video with MoneyPrinterTurbo from a topic, title, idea, prompt or script. Supports the original native Skill workflow plus an already-running API and Docker/provider deployments. Use this skill for finished video delivery, installation/configuration, provider health diagnostics, local-model routing, Docker runtime setup, failed generation repair, or locating/downloading the generated MP4.
+compatibility: Requires an AI agent with terminal, network and filesystem support. Native mode preserves the upstream helper. API/Docker modes support Linux, macOS and Windows where Docker/API connectivity is available.
 metadata:
-  author: "harry0703@hotmail.com"
-  version: "1.3.2"
+  author: "MoneyPrinterTurbo contributors + overcyber extension"
+  version: "2.0.0"
   upstream: "https://github.com/harry0703/MoneyPrinterTurbo"
+  fork: "https://github.com/overcyber/MoneyPrinterTurbo"
 ---
 
-# MoneyPrinterTurbo Video Generation
+# MoneyPrinterTurbo Video Generation — Skill v2
 
-The user only needs to provide a video topic or script. Complete installation, configuration reuse, generation, waiting, and final MP4 delivery automatically. Do not stop after giving instructions or commands.
+Produce the final video, not only instructions. Preserve the original workflow and add API/Docker/provider routing.
 
-## Required Behavior
+## Execution modes
 
-1. Ask the user only for required API credentials that are missing, rejected, or unusable. Combine all required credentials into one request.
-2. Do not ask for confirmation before installing, generating, waiting, using defaults, or returning the result.
-3. Do not create or repeatedly update a detailed plan for a standard generation request. Send one short progress update and execute.
-4. Run the helper as one foreground command with a timeout of at least 20 minutes.
-5. Never poll with `sleep`, `echo`, `ps`, repeated `ls`, or repeated `tail`. If the terminal returns a resumable session ID, continue waiting on that same session.
-6. Do not read the full log after success. Read only the short reported error or the relevant log tail after failure.
-7. Never print API keys, tokens, the full `config.toml`, or credential-bearing configuration fragments.
+### `native` — original Skill
 
-## Defaults
-
-Unless the user requests otherwise, generate one Chinese `9:16` portrait video with Pexels footage, the default Chinese Edge TTS voice, subtitles, and background music. Install MoneyPrinterTurbo under the user's home directory.
-
-## Execution
-
-### 1. Locate the helper
-
-Resolve `SKILL_DIR` from this `SKILL.md` file. The helper is the adjacent `mpt_agent.py`. Set the terminal tool's working directory to `SKILL_DIR` and invoke the helper by its relative filename. Do not put the absolute helper path in the command, and do not run an extra `ls` or `dir` check.
-
-This is required on Windows because some agent terminal validators remove backslashes from absolute paths embedded in commands. Using `mpt_agent.py` with `workdir=SKILL_DIR` avoids that failure and works on both macOS and Windows.
-
-If the client loaded only the remote `SKILL.md`, download the helper from the official repository to a temporary directory, then use that temporary directory as the command working directory:
-
-```text
-https://raw.githubusercontent.com/harry0703/MoneyPrinterTurbo/main/docs/skill/mpt_agent.py
-```
-
-### 2. Run the helper
-
-Do not run a separate `uv --version` preflight. Run the helper directly. If the shell explicitly reports that uv is missing, install uv and retry the same helper command once.
-
-macOS uv installation:
+Use this when the user asks for the upstream/original behavior or no API exists.
 
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
+python mpt_skill.py --transport native --subject "<video topic>"
 ```
 
-Windows PowerShell uv installation:
-
-```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
-Use this foreground command with `workdir=SKILL_DIR` and a timeout of at least 20 minutes:
+The original helper remains available and must not be removed:
 
 ```bash
 uv run --no-project --python 3.11 python mpt_agent.py --subject "<video topic>"
 ```
 
-On Windows, do not try absolute backslash paths, absolute forward-slash paths, or copies in the workspace before this relative command. If a terminal tool reports `referenced_script_path_missing`, verify that its working directory is exactly `SKILL_DIR` and retry the relative command once. Do not cycle through path variants.
+`mpt_skill.py --transport native` delegates to that helper. This is the compatibility path.
 
-Do not use Docker, Conda, system pip, or a manually managed virtual environment.
+### `api` — already-running MoneyPrinterTurbo API
 
-## Exit Handling
-
-### Exit code 0: deliver the result
-
-Successful output has this form:
-
-```text
-MPT_RESULT
-VIDEO_FILE=<absolute path>/final-1.mp4
-TASK_DIR=<absolute path>/storage/tasks/<task_id>
-LOG_FILE=<absolute path>/run-<task_id>.log
-RESULT_FILE=<absolute path>/latest-result.json
+```bash
+python mpt_skill.py \
+  --transport api \
+  --api-base-url http://127.0.0.1:8080 \
+  --subject "<video topic>" \
+  --aspect 16:9 \
+  --language pt-BR
 ```
 
-`mpt_agent.py` emits `VIDEO_FILE` only after confirming that the file exists and is non-empty. Do not run another `ls`, `stat`, or file validation command.
+Protected API:
 
-If the terminal reports `exitCode=0` but truncates the output or returns a history-file reference without `MPT_RESULT`, do not infer failure and do not inspect old logs. Read this file once:
-
-```text
-~/MoneyPrinterTurbo/.agent-logs/moneyprinterturbo-video/latest-result.json
+```bash
+export MPT_API_KEY='<value>'
 ```
 
-Treat `status=completed` as success. Return only the absolute video path and a concise description, for example:
+The helper submits `POST /api/v1/videos`, follows `GET /api/v1/tasks/{task_id}` and downloads the final MP4.
 
-```text
-The video is ready.
-Topic: ...
-Video file: /absolute/path/to/final-1.mp4
-Summary: Chinese portrait video with voice-over, subtitles, and background music.
+### `docker` — API + runtime providers
+
+```bash
+cp providers.docker.example.json providers.docker.json
+
+python docs/skill/mpt_skill.py \
+  --transport docker \
+  --subject "<video topic>"
 ```
 
-### Exit code 10: request credentials once
-
-`MPT_NEEDS_INPUT` includes only the required fields, recommended LLM providers and signup links, custom OpenAI-compatible requirements, and material-provider signup links. Ask only for the listed values and do not request credentials already found in `config.toml`.
-
-After the user responds, rerun the same foreground command with only the required environment variables:
+The Docker API reads:
 
 ```text
-MPT_LLM_PROVIDER
-MPT_LLM_API_KEY
-MPT_LLM_BASE_URL
-MPT_LLM_MODEL_NAME
-MPT_PEXELS_API_KEY
-MPT_VOLCENGINE_ARK_API_KEY
-MPT_OFOX_API_KEY
-MPT_METASO_MINIMAX_API_KEY
+MPT_PROVIDER_CONFIG=/MoneyPrinterTurbo/providers.docker.json
 ```
 
-When `SEEDANCE_CHARGE_CONFIRMATION_REQUIRED` is present, explain that every
-generated Seedance clip creates a paid Ark task. Only after the user explicitly
-confirms, rerun with `--confirm-seedance-charge`; never add this flag silently.
+and can reach host services through `host.docker.internal`.
 
-When `OFOX_CHARGE_CONFIRMATION_REQUIRED` is present, explain that every
-generated OFox clip creates a paid task. Only after the user explicitly
-confirms, rerun with `--confirm-ofox-charge`; never add this flag silently.
+## Runtime provider endpoints
 
-When `METASO_MINIMAX_CHARGE_CONFIRMATION_REQUIRED` is present, explain that
-every generated MiniMax H3 clip creates a paid Metaso task. Only after the user
-explicitly confirms, rerun with `--confirm-metaso-minimax-charge`; never add
-this flag silently.
+```text
+GET  /api/v1/providers
+GET  /api/v1/providers/health
+GET  /api/v1/providers/{provider_id}/health
+POST /api/v1/providers/{provider_id}/invoke/{action}
+```
 
-### Exit code 1: repair or report
+Only server-declared actions can be invoked. Never turn this into an arbitrary URL proxy.
 
-Use `MPT_ERROR` and `LOG_FILE` to repair a recoverable problem and retry once. Ask the user only if the repair requires a new API key. If the retry fails, report the failed stage, a short error, and the log path.
+### OpenAI-compatible image bridge
 
-A terminal-tool path validation error is not a video-generation failure because the helper did not start. Correct the working directory and retry the relative command once. Never ask the user to copy `mpt_agent.py`, run commands manually, or confirm whether the agent should continue.
+Configured image providers expose:
 
-## Configuration and Background Fallback
+```text
+POST /api/v1/providers/{provider_id}/images/generations
+```
 
-The helper may read the complete local `config.toml` to reuse existing settings, but it must never print its contents. It reuses a working LLM provider automatically and validates configured Pexels keys through the authenticated My Collections endpoint before generation.
+This lets MoneyPrinterTurbo keep its existing `openai_image` material pipeline while actual inference is performed by a native local/Docker provider.
 
-Use background mode only if the agent platform cannot wait for a foreground process. Wait for the platform's process-completion notification without polling, then read `latest-result.json` once.
+For the Dual-GPU local image provider declared in `providers.docker.example.json`:
 
-## Scope
+```text
+provider id: dual-gpu-image
+GET  http://host.docker.internal:8000/health
+POST http://host.docker.internal:8000/v1/images
+GET  http://host.docker.internal:8000/files/{relative_path}
+```
 
-- Support macOS and Windows only.
-- Use uv and the MoneyPrinterTurbo CLI only.
-- Do not start Docker, WebUI, or API services.
-- Do not run multiple video jobs concurrently.
-- Pass additional video requirements after `--`. Run `cli.py --help` once only when an unfamiliar option must be verified.
+The bridge maps an OpenAI Images request such as:
+
+```json
+{
+  "model": "provider-default",
+  "prompt": "technical visualization of a multi-agent architecture",
+  "n": 1,
+  "size": "1536x1024"
+}
+```
+
+to the provider's native request:
+
+```json
+{
+  "prompt": "technical visualization of a multi-agent architecture",
+  "negative_prompt": "...",
+  "save_dir": "moneyprinterturbo",
+  "width": 1536,
+  "height": 1024
+}
+```
+
+and returns `b64_json` to the existing MoneyPrinterTurbo image source.
+
+## Docker + local image generation
+
+```bash
+python docs/skill/mpt_skill.py \
+  --transport docker \
+  --subject "Sistemas Multi-Agentes de IA" \
+  --image-provider dual-gpu-image \
+  --aspect 16:9 \
+  --language pt-BR \
+  --output ./multi-agentes.mp4
+```
+
+In Docker mode the helper points the existing `openai_image` configuration at:
+
+```text
+http://127.0.0.1:8080/api/v1/providers/dual-gpu-image
+```
+
+The effective pipeline is:
+
+```text
+script
+ -> search terms
+ -> openai_image material stage
+ -> provider bridge
+ -> local image API
+ -> PNG
+ -> MoneyPrinterTurbo image-to-video clip
+ -> composition
+ -> TTS/subtitles/BGM
+ -> final MP4
+```
+
+Do not duplicate the mature image-to-video logic in `app/services/material.py`.
+
+## Provider configuration
+
+Create a local file:
+
+```bash
+cp providers.docker.example.json providers.docker.json
+```
+
+`providers.docker.json` is ignored by Git. Store endpoints and environment-variable names there, not secret values.
+
+Example:
+
+```json
+{
+  "kind": "image",
+  "protocol": "mpt_image_v1",
+  "base_url": "http://host.docker.internal:8000",
+  "base_url_env": "MPT_DUAL_GPU_IMAGE_URL",
+  "auth": {
+    "type": "bearer_env",
+    "env": "API_TOKEN",
+    "optional": true
+  },
+  "actions": {
+    "health": {"method": "GET", "path": "/health"},
+    "generate_image": {"method": "POST", "path": "/v1/images"}
+  }
+}
+```
+
+## Provider containers
+
+Base application:
+
+```bash
+docker compose up -d api
+```
+
+Provider override:
+
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.providers.yml \
+  up -d api
+```
+
+Optional Ollama:
+
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.providers.yml \
+  --profile provider-ollama \
+  up -d api ollama
+```
+
+Do not start heavy providers that the current job does not need.
+
+## Existing models and sources remain supported
+
+Do not replace the project's existing LLM registry. It already includes local, cloud, gateway and OpenAI-compatible providers, including Ollama, OneAPI and LiteLLM paths.
+
+Preserve existing video/material source families:
+
+- Pexels, Pixabay, Coverr;
+- WaveSpeed;
+- VolcEngine Seedance;
+- OFox;
+- Metaso MiniMax;
+- LoomLoom;
+- `openai_image`;
+- local uploads.
+
+Runtime providers are an additional transport/discovery layer, not a replacement for these implementations.
+
+## Required agent behavior
+
+1. Deliver the final MP4 when generation succeeds.
+2. Preserve `native`; never force Docker.
+3. Prefer `api` when a healthy API is already running.
+4. Prefer `docker` when the user explicitly requests containers/providers or reproducibility.
+5. Check provider health before submitting a provider-dependent job.
+6. Never print API keys, Bearer tokens, complete `config.toml`, or secret environment values.
+7. Never silently substitute cloud when the user requested a local provider.
+8. Never repeatedly create a paid generation job when remote state is unknown.
+9. Keep MoneyPrinterTurbo task state as the source of truth.
+10. Use `docs/PROVIDERS-DOCKER-PT-BR.md` for the architecture and evolution plan.
+
+## Failure handling
+
+For `native`, keep the original `mpt_agent.py` exit semantics.
+
+For `api`/`docker`:
+
+- provider health failure: report provider ID and connectivity error;
+- task state `-1`: report `failed_stage` and `error`;
+- timeout: report the task ID and do not resubmit automatically;
+- Docker startup failure: report Compose failure and do not switch to cloud;
+- provider generation uncertainty: do not create another paid task blindly.
+
+## Architecture
+
+```text
+                  MoneyPrinterTurbo
+                        |
+       +----------------+----------------+
+       |                |                |
+       v                v                v
+     LLMs             TTS/BGM         Materials
+       |                                 |
+ existing registry               existing sources
+                                         |
+                                  provider bridge
+                                         |
+                  +----------------------+----------------+
+                  |                      |                |
+                  v                      v                v
+             local Docker          host service       cloud API
+```
+
+MoneyPrinterTurbo remains the video orchestrator; providers become replaceable execution backends.
