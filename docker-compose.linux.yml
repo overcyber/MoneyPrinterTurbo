@@ -1,6 +1,5 @@
 # Linux-native runtime for MoneyPrinterTurbo.
 #
-# Why this exists:
 # Docker Engine on Linux does not proxy host.docker.internal to services bound
 # only to 127.0.0.1 on the host. With network_mode: host, local providers such
 # as http://127.0.0.1:8000 remain reachable without forcing them to bind to
@@ -17,6 +16,15 @@ x-common-volumes: &common-volumes
 
 x-provider-environment: &provider-environment
   MPT_PROVIDER_CONFIG: ${MPT_PROVIDER_CONFIG:-/MoneyPrinterTurbo/providers.docker.json}
+  API_TOKEN: ${API_TOKEN:-}
+  MPT_DUAL_GPU_IMAGE_URL: ${MPT_DUAL_GPU_IMAGE_URL:-}
+  MPT_OLLAMA_URL: ${MPT_OLLAMA_URL:-}
+  MPT_OPENAI_COMPAT_URL: ${MPT_OPENAI_COMPAT_URL:-}
+  MPT_OPENAI_COMPAT_TOKEN: ${MPT_OPENAI_COMPAT_TOKEN:-}
+  MPT_TTS_PROVIDER_URL: ${MPT_TTS_PROVIDER_URL:-}
+  MPT_TTS_PROVIDER_TOKEN: ${MPT_TTS_PROVIDER_TOKEN:-}
+  MPT_VIDEO_PROVIDER_URL: ${MPT_VIDEO_PROVIDER_URL:-}
+  MPT_VIDEO_PROVIDER_TOKEN: ${MPT_VIDEO_PROVIDER_TOKEN:-}
 
 services:
   webui:
