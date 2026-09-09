@@ -1,0 +1,57 @@
+# Linux-native runtime for MoneyPrinterTurbo.
+#
+# Why this exists:
+# Docker Engine on Linux does not proxy host.docker.internal to services bound
+# only to 127.0.0.1 on the host. With network_mode: host, local providers such
+# as http://127.0.0.1:8000 remain reachable without forcing them to bind to
+# 0.0.0.0.
+#
+# Usage:
+#   docker compose -f docker-compose.linux.yml up -d --build api
+#
+# Optional provider definitions may still be merged:
+#   docker compose -f docker-compose.linux.yml -f docker-compose.providers.yml up -d --build api
+
+x-common-volumes: &common-volumes
+  - ./:/MoneyPrinterTurbo
+
+x-provider-environment: &provider-environment
+  MPT_PROVIDER_CONFIG: ${MPT_PROVIDER_CONFIG:-/MoneyPrinterTurbo/providers.docker.json}
+
+services:
+  webui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: moneyprinterturbo-webui
+    network_mode: host
+    command:
+      - streamlit
+      - run
+      - ./webui/Main.py
+      - --server.address=0.0.0.0
+      - --server.port=8501
+      - --browser.serverAddress=127.0.0.1
+      - --server.enableCORS=True
+      - --browser.gatherUsageStats=False
+      - --client.toolbarMode=minimal
+      - --logger.hideWelcomeMessage=True
+      - --server.showEmailPrompt=False
+    environment: *provider-environment
+    extra_hosts:
+      - "host.docker.internal:127.0.0.1"
+    volumes: *common-volumes
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: moneyprinterturbo-api
+    network_mode: host
+    command: ["python3", "main.py"]
+    environment: *provider-environment
+    extra_hosts:
+      - "host.docker.internal:127.0.0.1"
+    volumes: *common-volumes
+    restart: unless-stopped
