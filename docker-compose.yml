@@ -3,6 +3,15 @@ x-common-volumes: &common-volumes
 
 x-provider-environment: &provider-environment
   MPT_PROVIDER_CONFIG: ${MPT_PROVIDER_CONFIG:-/MoneyPrinterTurbo/providers.docker.json}
+  API_TOKEN: ${API_TOKEN:-}
+  MPT_DUAL_GPU_IMAGE_URL: ${MPT_DUAL_GPU_IMAGE_URL:-}
+  MPT_OLLAMA_URL: ${MPT_OLLAMA_URL:-}
+  MPT_OPENAI_COMPAT_URL: ${MPT_OPENAI_COMPAT_URL:-}
+  MPT_OPENAI_COMPAT_TOKEN: ${MPT_OPENAI_COMPAT_TOKEN:-}
+  MPT_TTS_PROVIDER_URL: ${MPT_TTS_PROVIDER_URL:-}
+  MPT_TTS_PROVIDER_TOKEN: ${MPT_TTS_PROVIDER_TOKEN:-}
+  MPT_VIDEO_PROVIDER_URL: ${MPT_VIDEO_PROVIDER_URL:-}
+  MPT_VIDEO_PROVIDER_TOKEN: ${MPT_VIDEO_PROVIDER_TOKEN:-}
 
 x-host-provider-access: &host-provider-access
   - "host.docker.internal:host-gateway"
