@@ -1,5 +1,4 @@
 import importlib.util
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -56,7 +55,9 @@ class MoneyPrinterTurboSkillLinuxTests(unittest.TestCase):
             (root / "docker-compose.linux.yml").write_text("services: {}\n")
             (root / "docker-compose.providers.yml").write_text("services: {}\n")
             with mock.patch.object(mpt_skill.sys, "platform", "linux"):
-                with mock.patch.object(mpt_skill.shutil, "which", return_value="/usr/bin/docker"):
+                with mock.patch.object(
+                    mpt_skill.shutil, "which", return_value="/usr/bin/docker"
+                ):
                     with mock.patch.object(mpt_skill.subprocess, "run") as run:
                         run.return_value = mock.Mock(returncode=0, stdout="", stderr="")
                         mpt_skill.start_docker_api(root)
